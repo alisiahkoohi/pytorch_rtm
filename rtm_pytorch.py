@@ -1,8 +1,8 @@
+import sys
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
-import matplotlib.pyplot as plt
 from SeisModel import ricker_wavelet, absorbing_boundaries, stencil
 
 class Net(nn.Module):
@@ -29,7 +29,7 @@ class Net(nn.Module):
         p_prev = torch.zeros(1, 1, self.nx, self.nz, requires_grad=False, dtype=torch.float32)
         p_curr = torch.zeros(1, 1, self.nx, self.nz, requires_grad=False, dtype=torch.float32)
         q_curr = torch.zeros(1, 1, self.nx, self.nz, requires_grad=False, dtype=torch.float32)
-        damp = absorbing_boundaries(nx, nz)
+        damp = absorbing_boundaries(self.nx, self.nz)
         if hasattr(self, 'xrec'):
             d_pred = torch.zeros(1, 1, self.nt, self.nrec, dtype=torch.float32)
 
@@ -55,9 +55,11 @@ class Net(nn.Module):
 
 #########################################################################################
 
+# from IPython import embed; embed()
+
 # Velocity model
-nx = 100
-nz = 100
+nx = int(sys.argv[1])
+nz = int(sys.argv[2])
 d = 10.0    # grid spacing
 v = torch.ones(nx, nz, dtype=torch.float32)*1500.0
 v[:,51:] = 3000.0
@@ -95,11 +97,7 @@ A0_inv.laplace.weight.requires_grad = False
 # Forward model
 d_obs = A_inv(q, sx, sz)[0]
 d_pred = A0_inv(q, sx, sz)[0]
-plt.figure(); plt.imshow(d_obs.data[0,0,:,:], vmin=-5, vmax=5, cmap="seismic", aspect='auto')
-plt.figure(); plt.imshow(d_pred.data[0,0,:,:], vmin=-5, vmax=5, cmap="seismic", aspect='auto')
 
 criterion = nn.MSELoss()
 loss = criterion(d_pred, d_obs)
 loss.backward()
-plt.figure(); plt.imshow(np.transpose(m0.grad), vmin=-4e2, vmax=4e2)
-plt.show()
